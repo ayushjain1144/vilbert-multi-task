@@ -331,3 +331,21 @@ TASK18:
   val_split: val
   lr: 0.000002
   num_epoch: 20
+TASK19:
+  name: referit3d
+  type: V-logit
+  loss: BCEWithLogitLoss
+  process: normal
+  task_id: 19
+  dataroot: /projects/katefgroup/language_grounding
+  features_h5path1: /projects/katefgroup/language_grounding/sr3d.lmdb
+  features_h5path2: ''
+  train_annotations_jsonpath: ''
+  val_annotations_jsonpath: ''
+  max_seq_length: 20
+  max_region_num: 101
+  batch_size: 256
+  train_split: train
+  val_split: val
+  lr: 0.00002
+  num_epoch: 200

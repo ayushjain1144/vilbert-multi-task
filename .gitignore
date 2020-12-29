@@ -37,6 +37,8 @@ data/
 save/
 logs/
 results/
+pretrained_models/
+scan_pickle/
 
 # Checkpoints directory
 checkpoints/
@@ -47,3 +49,6 @@ checkpoints/
 # virtualenv
 venv/
 ENV/
+script/scan_pickle
+script/output
+script/lmdb

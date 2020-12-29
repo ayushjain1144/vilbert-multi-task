@@ -9,6 +9,8 @@ from six.moves import cPickle
 import os.path as osp
 from visual_data_handlers import Scan, ScanNetMappings
 import torch.multiprocessing
+import ipdb 
+st = ipdb.set_trace
 
 class FeatureExtractor:
 
@@ -17,11 +19,13 @@ class FeatureExtractor:
         os.makedirs(self.args.output_folder, exist_ok=True)
         split = self.args.split
         pkl_path = self.args.scan_pickle_path
+        scan_path = self.args.scan_path
+        base_txt_dir = self.args.scan_txt_base
 
         # load scans and pickle them once and for all!
         if not osp.exists(f"{pkl_path}/{split}_scans.pkl"):
-            self.save_data(f"{pkl_path}/{split}_scans.pkl", scan_path, split)
-        _, self.scans = self.unpickle_data(f"{pkl_path}/{split}_scans.pkl")
+            save_data(f"{pkl_path}/{split}_scans.pkl", split, scan_path, base_txt_dir)
+        _, self.scans = unpickle_data(f"{pkl_path}/{split}_scans.pkl")
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -32,34 +36,33 @@ class FeatureExtractor:
     def get_parser(self):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--pointnet_model_file", default=None, type=str, required=True
+            "--pointnet_model_file", default="pretrained_models/pointnet2_largemsg.pt",
+             type=str
         )
         parser.add_argument(
             "--output_folder", type=str, default="./output"
         )
         parser.add_argument(
-            "--split", type=str, default="train"
+            "--split", type=str, default="test"
         )
         parser.add_argument(
-            "--scan_path", type=str, required=True
+            "--scan_path", default="/projects/katefgroup/langauage_grounding/scans",
+             type=str
         )
         parser.add_argument(
-            "--scan_txt_base", type=str, required=True
+            "--scan_txt_base", default="/projects/katefgroup/language_grounding/extra",
+            type=str
         )
-        parser.add_argument(
-            "--annos_path", type=str, required=True
-        )
+        # parser.add_argument(
+        #     "--annos_path", default="", type=str, required=True
+        # )
         parser.add_argument(
             "--scan_pickle_path", type=str, default="./scan_pickle"
         )
         parser.add_argument("--batch_size", type=int, default=2)
 
-
-    def scannet_loader(self, iter_obj):
-        """Load the scans in memory, helper function."""
-        scan_id, scan_path, scannet = iter_obj
-        return Scan(scan_id, scan_path, scannet, True)
-        
+        return parser
+       
 
     def _process_feature_extraction(self):
         pass
@@ -95,10 +98,6 @@ class FeatureExtractor:
             # add info_list
             
 
-
-
-
-
     def _save_feature(self):
         file_base_name = os.path.basename(file_name)
         file_base_name = file_base_name.split(".")[0]
@@ -125,57 +124,62 @@ class FeatureExtractor:
             for idx, file_name in enumerate(chunk):
                 self._save_feature(file_name, features[idx], infos[idx])
 
-    def save_data(self, filename, scan_path, split):
-        """Save all scans to pickle."""
-        import multiprocessing as mp
+def scannet_loader(iter_obj):
+    """Load the scans in memory, helper function."""
+    scan_id, scan_path, scannet = iter_obj
+    return Scan(scan_id, scan_path, scannet, True)
+ 
 
-        # Read all scan files
-        with open('data/extra/sr3d_%s_scans.txt' % split) as fid:
-            scan_ids = eval(fid.read())
-        print('{} scans found.'.format(len(scan_ids)))
-        scannet = ScanNetMappings()
+def save_data(filename, split, scan_path, base_txt_dir):
+    """Save all scans to pickle."""
+    import multiprocessing as mp
 
-        # Load data
-        n_items = len(scan_ids)
-        n_processes = 4  # min(mp.cpu_count(), n_items)
-        pool = mp.Pool(n_processes)
-        chunks = int(n_items / n_processes)
-        print(n_processes, chunks)
-        all_scans = dict()
-        iter_obj = [
-            (scan_id, scan_path, scannet)
-            for scan_id in scan_ids
-        ]
-        for i, data in enumerate(
-                pool.imap(scannet_loader, iter_obj, chunksize=chunks)
-        ):
-            all_scans[scan_ids[i]] = data
-        pool.close()
-        pool.join()
+    # Read all scan files
+    with open(f'{base_txt_dir}/sr3d_{split}_scans.txt') as fid:
+        scan_ids = eval(fid.read())
+    print('{} scans found.'.format(len(scan_ids)))
+    scannet = ScanNetMappings(base_txt_dir)
 
-        # Save data
-        print('pickle time')
-        self.pickle_data(filename, scannet, all_scans)
+    # Load data
+    n_items = len(scan_ids)
+    n_processes = 4  # min(mp.cpu_count(), n_items)
+    pool = mp.Pool(n_processes)
+    chunks = int(n_items / n_processes)
+    print(n_processes, chunks)
+    all_scans = dict()
+    iter_obj = [
+        (scan_id, scan_path, scannet)
+        for scan_id in scan_ids
+    ]
+    for i, data in enumerate(
+            pool.imap(scannet_loader, iter_obj, chunksize=chunks)
+    ):
+        all_scans[scan_ids[i]] = data
+    pool.close()
+    pool.join()
 
-    def pickle_data(self, file_name, *args):
-        """Use (c)Pickle to save multiple objects in a single file."""
-        out_file = open(file_name, 'wb')
-        cPickle.dump(len(args), out_file, protocol=2)
-        for item in args:
-            cPickle.dump(item, out_file, protocol=2)
-        out_file.close()
+    # Save data
+    print('pickle time')
+    self.pickle_data(filename, scannet, all_scans)
 
-    def unpickle_data(self, file_name):
-        """Restore data previously saved with pickle_data()."""
-        in_file = open(file_name, 'rb')
-        size = cPickle.load(in_file)
+def pickle_data(file_name, *args):
+    """Use (c)Pickle to save multiple objects in a single file."""
+    out_file = open(file_name, 'wb')
+    cPickle.dump(len(args), out_file, protocol=2)
+    for item in args:
+        cPickle.dump(item, out_file, protocol=2)
+    out_file.close()
 
-        for _ in range(size):
-            yield cPickle.load(in_file)
-        in_file.close()
+def unpickle_data(file_name):
+    """Restore data previously saved with pickle_data()."""
+    in_file = open(file_name, 'rb')
+    size = cPickle.load(in_file)
 
+    for _ in range(size):
+        yield cPickle.load(in_file)
+    in_file.close()
 
-
+   
 if __name__ == "__main__":
     feature_extractor = FeatureExtractor()
     feature_extractor.extract_features()

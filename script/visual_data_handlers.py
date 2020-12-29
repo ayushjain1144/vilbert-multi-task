@@ -11,19 +11,19 @@ from plyfile import PlyData
 class ScanNetMappings:
     """Holds ScanNet dataset mappings."""
 
-    def __init__(self):
+    def __init__(self, base_txt_dir):
         """Load ScanNet files for classes/rotations/etc."""
-        with open('data/extra/scannet_idx_to_semantic_class.json') as fid:
+        with open(f'{base_txt_dir}/scannet_idx_to_semantic_class.json') as fid:
             self.idx_to_semantic_cls_dict = json.load(fid)
 
         self.semantic_cls_to_idx_dict = {
             v: k for k, v in self.idx_to_semantic_cls_dict.items()
         }
         with open(
-            'data/extra/scannet_instance_class_to_semantic_class.json'
+            f'{base_txt_dir}/scannet_instance_class_to_semantic_class.json'
         ) as fid:
             self.instance_cls_to_semantic_cls_dict = json.load(fid)
-        with open('data/extra/scans_axis_alignment_matrices.json') as fid:
+        with open(f'{base_txt_dir}/scans_axis_alignment_matrices.json') as fid:
             self.scans_axis_alignment_mats = json.load(fid)
 
     def idx_to_semantic_cls(self, semantic_idx):

@@ -37,8 +37,6 @@ def ForwardModelsVal(args, task_cfg, device, task_id, batch, model, task_losses)
         features, spatials, image_mask, question, target, input_mask, segment_ids, multiple_choice_ids, co_attention_mask, question_id = (
             batch
         )
-    elif task_id == "TASK19":
-        st()
     else:
         features, spatials, image_mask, question, target, input_mask, segment_ids, co_attention_mask, question_id = (
             batch

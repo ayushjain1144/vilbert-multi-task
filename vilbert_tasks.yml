@@ -334,7 +334,7 @@ TASK18:
 TASK19:
   name: Referit3DDataset
   type: V-logit
-  loss: BCEWithLogitLoss
+  loss: CrossEntropyLoss
   process: normal
   task_id: 19
   dataroot: /projects/katefgroup/language_grounding
@@ -343,7 +343,7 @@ TASK19:
   train_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_train_scans.txt'
   val_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_test_scans.txt'
   max_seq_length: 128
-  max_region_num: 101
+  max_region_num: 150
   batch_size: 256
   train_split: train
   val_split: test

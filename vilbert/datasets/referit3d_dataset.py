@@ -141,6 +141,30 @@ class Referit3DDataset(Dataset):
         boxes = boxes[:num_boxes]
         features = features[:num_boxes]
 
+        mix_num_boxes = min(int(num_boxes), self._max_region_num)
+        mix_boxes_pad = np.zeros((self._max_region_num, 7))
+        mix_features_pad = np.zeros((self._max_region_num, 2048))
+
+        image_mask = [1] * (int(mix_num_boxes))
+        while len(image_mask) < self._max_region_num:
+            image_mask.append(0)
+
+        mix_boxes_pad[:mix_num_boxes] = boxes[:mix_num_boxes]
+        mix_features_pad[:mix_num_boxes] = features[:mix_num_boxes]
+
+        features = torch.tensor(mix_features_pad).float()
+        image_mask = torch.tensor(image_mask).long()
+        spatials = torch.tensor(mix_boxes_pad).float()
+
+        co_attention_mask = torch.zeros((self._max_region_num, self._max_seq_length))
+
+        # TODO: Handle target
+        target = torch.zeros((self.max_region_num, 1)).float()
+
+        caption = entry["token"]
+        input_mask = entry["input_mask"]
+        segment_ids = entry["segment_ids"]
+
         return (
             features,
             spatials,

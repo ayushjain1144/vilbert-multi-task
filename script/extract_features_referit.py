@@ -166,7 +166,7 @@ def save_data(filename, split, scan_path, base_txt_dir):
 
     # Load data
     n_items = len(scan_ids)
-    n_processes = 4  # min(mp.cpu_count(), n_items)
+    n_processes = 32  # min(mp.cpu_count(), n_items)
     pool = Pool(n_processes)
     chunks = int(n_items / n_processes)
     print(n_processes, chunks)

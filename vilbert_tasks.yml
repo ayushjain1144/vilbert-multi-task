@@ -332,7 +332,7 @@ TASK18:
   lr: 0.000002
   num_epoch: 20
 TASK19:
-  name: referit3d
+  name: Referit3DDataset
   type: V-logit
   loss: BCEWithLogitLoss
   process: normal
@@ -340,12 +340,12 @@ TASK19:
   dataroot: /projects/katefgroup/language_grounding
   features_h5path1: /projects/katefgroup/language_grounding/sr3d.lmdb
   features_h5path2: ''
-  train_annotations_jsonpath: ''
-  val_annotations_jsonpath: ''
-  max_seq_length: 20
+  train_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_train_scans.txt'
+  val_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_test_scans.txt'
+  max_seq_length: 128
   max_region_num: 101
   batch_size: 256
   train_split: train
-  val_split: val
+  val_split: test
   lr: 0.00002
   num_epoch: 200

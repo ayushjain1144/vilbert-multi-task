@@ -94,8 +94,18 @@ class FeatureExtractor:
             ]
             num_objs = len(scan.three_d_objects)
 
+            min_x, min_y, min_z = torch.min(scan.pc, dim=0)
+            max_x, max_y, max_z = torch.max(scan.pc, dim=0)
+
+            image_w = float(max_x - min_x)
+            image_h = float(max_y - min_y)
+            image_d = float(max_z - min_z)
+
             # obj_point_clouds_batched = torch.stack(obj_point_clouds)
             # obj_features = self.pp_model(obj_point_clouds_batched)
+
+            # "features" [shape: (num_images, num_proposals, feature_size)]
+
             feat_list.append(color_point_clouds)   # just for testing
 
 
@@ -104,8 +114,9 @@ class FeatureExtractor:
                     "bbox": np.vstack(obj_bbox),
                     "num_boxes": num_objs,
                     "objects": np.vstack(obj_semantic_class),
-                    "obj_pc": np.vstack(obj_point_clouds),
-                    "color_pc": np.vstack(color_point_clouds),
+                    "image_w": image_w,
+                    "image_h": image_h,
+                    "image_d": image_d,
                 }
             )
 

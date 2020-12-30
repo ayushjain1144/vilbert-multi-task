@@ -18,8 +18,10 @@ from torch.utils.data.distributed import DistributedSampler
 from pytorch_transformers.tokenization_bert import BertTokenizer
 from vilbert.datasets import DatasetMapTrain, DatasetMapEval
 from vilbert.datasets._image_features_reader import ImageFeaturesH5Reader
+from vilbert.datasets._pc_features_reader import PCFeaturesH5Reader
 import pdb
-
+import ipdb
+st = ipdb.set_trace
 logger = logging.getLogger(__name__)
 
 LossMap = {
@@ -35,6 +37,8 @@ def ForwardModelsVal(args, task_cfg, device, task_id, batch, model, task_losses)
         features, spatials, image_mask, question, target, input_mask, segment_ids, multiple_choice_ids, co_attention_mask, question_id = (
             batch
         )
+    elif task_id == "TASK19":
+        st()
     else:
         features, spatials, image_mask, question, target, input_mask, segment_ids, co_attention_mask, question_id = (
             batch

@@ -61,7 +61,7 @@ class FeatureExtractor:
         #     "--annos_path", default="", type=str, required=True
         # )
         parser.add_argument(
-            "--scan_pickle_path", type=str, default="./scan_pickle"
+            "--scan_pickle_path", type=str, default="/projects/katefgroup/language_grounding/scan_pickle"
         )
         parser.add_argument("--batch_size", type=int, default=2)
 

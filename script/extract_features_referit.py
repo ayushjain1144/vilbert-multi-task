@@ -13,6 +13,7 @@ import ipdb
 st = ipdb.set_trace
 from multiprocessing.pool import ThreadPool as Pool
 from copy import deepcopy
+from pointnet_pp import PointNetPP
 
 class FeatureExtractor:
 
@@ -32,15 +33,18 @@ class FeatureExtractor:
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         # st()
-        # with torch.no_grad():
-        #     checkpoint = torch.load(self.args.pointnet_model_file,
-        #                                 map_location=torch.device("cpu"))
-        #     self.pp_model = checkpoint['models']['best_acc']    
+        with torch.no_grad():
+            checkpoint = torch.load(self.args.pointnet_model_file,
+                                        map_location=torch.device("cpu"))
+            # st()
+            self.pp_model = PointNetPP()
+            self.pp_model.load_state_dict(checkpoint['model_state_dict']) 
+            self.pp_model = self.pp_model.eval()   
     
     def get_parser(self):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--pointnet_model_file", default="../pretrained_models/pointnet2_largemsg.pt",
+            "--pointnet_model_file", default="/projects/katefgroup/language_grounding/checkpoints/classifier.pt",
             type=str
         )
         parser.add_argument(
@@ -61,7 +65,7 @@ class FeatureExtractor:
         #     "--annos_path", default="", type=str, required=True
         # )
         parser.add_argument(
-            "--scan_pickle_path", type=str, default="/projects/katefgroup/language_grounding/scan_pickle"
+            "--scan_pickle_path", type=str, default="scan_pickle"
         )
         parser.add_argument("--batch_size", type=int, default=2)
 
@@ -76,22 +80,38 @@ class FeatureExtractor:
         for scan_path in scan_paths:
             scan = deepcopy(self.scans[scan_path])
             labels = [obj['instance_label'] for obj in scan.three_d_objects]
-            obj_point_clouds = [
-                torch.from_numpy(scan.get_object_pc(obj_id)).float()
-                for obj_id in range(len(scan.three_d_objects))
-            ]
-            color_point_clouds = [
-                torch.from_numpy(scan.get_object_color(obj_id)).float()
-                for obj_id in range(len(scan.three_d_objects))
-            ]
+
+            obj_point_clouds = []
+
+            for obj_id in range(len(scan.three_d_objects)):
+                point_cloud = np.copy(torch.from_numpy(scan.get_object_pc(obj_id)))
+                color = np.copy(torch.from_numpy(scan.get_object_color(obj_id)))
+
+                np.random.seed(1184)
+                n_points = len(point_cloud)
+                inds = np.random.choice(n_points, 1024, replace=n_points < 1024)
+                point_cloud = point_cloud[inds]
+                color = color[inds]
+
+                # Normalize
+                point_cloud = point_cloud - np.mean(point_cloud, axis=0)
+                max_dist = np.max(np.sqrt(np.sum(point_cloud ** 2, axis=1)))
+                point_cloud = point_cloud / max_dist
+                
+                point_cloud = np.concatenate((point_cloud, color), 1)
+                point_cloud = torch.from_numpy(point_cloud).float()
+
+                obj_point_clouds.append(point_cloud)
+
             obj_bbox = [
-                scan.get_object_bbox(obj_id)
-                for obj_id in range(len(scan.three_d_objects))
-            ]
+                    scan.get_object_bbox(obj_id)
+                    for obj_id in range(len(scan.three_d_objects))
+                ]
             obj_semantic_class = [
                 scan.get_object_semantic_label(obj_id)
                 for obj_id in range(len(scan.three_d_objects))
             ]
+
             num_objs = len(scan.three_d_objects)
 
             min_x, min_y, min_z = np.min(scan.pc, axis=0)
@@ -101,13 +121,14 @@ class FeatureExtractor:
             image_h = float(max_y - min_y)
             image_d = float(max_z - min_z)
 
-            # TODO: Add correct pp++ features
-            # obj_point_clouds_batched = torch.stack(obj_point_clouds)
-            # obj_features = self.pp_model(obj_point_clouds_batched)
+            obj_point_clouds_batched = torch.stack(obj_point_clouds) # num_objs X 1024 X 6
+            pc_combined = obj_point_clouds_batched.permute(0, 2, 1)
+            obj_features, _, _ = self.pp_model(pc_combined)
+            obj_features = obj_features.mean(2).detach()  # num_objs X 1024
+            assert not obj_features.requires_grad
 
             # "features" [shape: (num_images, num_proposals, feature_size)]
-
-            feat_list.append(color_point_clouds)   # just for testing
+            feat_list.append(obj_features)   # just for testing
 
             info_list.append(
                 {

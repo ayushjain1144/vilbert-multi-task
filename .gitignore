@@ -39,6 +39,9 @@ logs/
 results/
 pretrained_models/
 scan_pickle/
+output_train
+lmdb_test
+datasets
 
 # Checkpoints directory
 checkpoints/

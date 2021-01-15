@@ -976,3 +976,11 @@ class SimpleClassifier(nn.Module):
     def forward(self, x):
         logits = self.main(x)
         return logits
+
+
+class PointCloudToImage(nn.Module):
+    def __init__(self):
+        super(PointCloudToImage, self).__init__()
+
+    def forward(self):
+        pass

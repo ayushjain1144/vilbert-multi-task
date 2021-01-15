@@ -115,7 +115,7 @@ class PCFeaturesH5Reader(object):
                     image_location[:, 4] = image_location[:, 4] / float(image_h)
                     image_location[:, 5] = image_location[:, 5] / float(image_d)
 
-                    g_location = np.array([0, 0, 0 1, 1, 1, 1])
+                    g_location = np.array([0, 0, 0, 1, 1, 1, 1])
                     image_location = np.concatenate(
                         [np.expand_dims(g_location, axis=0), image_location], axis=0
                     )
@@ -130,52 +130,63 @@ class PCFeaturesH5Reader(object):
                     )
                     self.boxes_ori[index] = image_location_ori
                     self.num_boxes[index] = num_boxes
+        
         else:
             # Read chunk from file everytime if not loaded in memory.
             with self.env.begin(write=False) as txn:
-                item = pickle.loads(txn.get(image_id))
-                image_id = item["image_id"]
-                image_h = int(item["image_h"])
-                image_w = int(item["image_w"])
-                # num_boxes = int(item['num_boxes'])
+                    item = pickle.loads(txn.get(image_id))
+                    image_id = item["image_id"]
+                    features = item["features"].reshape(-1, 2048)
+                    
+                    # [xmin, ymin, zmin, xmax, ymax, zmax]
+                    boxes = item["boxes"].reshape(-1, 6)
 
-                # features = np.frombuffer(base64.b64decode(item["features"]), dtype=np.float32).reshape(num_boxes, 2048)
-                # boxes = np.frombuffer(base64.b64decode(item['boxes']), dtype=np.float32).reshape(num_boxes, 4)
-                features = item["features"].reshape(-1, 2048)
-                boxes = item["boxes"].reshape(-1, 4)
+                    num_boxes = features.shape[0]
 
-                num_boxes = features.shape[0]
-                g_feat = np.sum(features, axis=0) / num_boxes
-                num_boxes = num_boxes + 1
-                features = np.concatenate(
-                    [np.expand_dims(g_feat, axis=0), features], axis=0
-                )
+                    g_feat = np.sum(features, axis=0) / num_boxes
+                    num_boxes = num_boxes + 1
 
-                image_location = np.zeros((boxes.shape[0], 5), dtype=np.float32)
-                image_location[:, :4] = boxes
-                image_location[:, 4] = (
-                    (image_location[:, 3] - image_location[:, 1])
-                    * (image_location[:, 2] - image_location[:, 0])
-                    / (float(image_w) * float(image_h))
-                )
+                    features = np.concatenate(
+                        [np.expand_dims(g_feat, axis=0), features], axis=0
+                    )
+                    self.features[index] = features
+                    # [xmin, ymin, zmin, xmax, ymax, zmax]
+                    # image_location: end vertices of cube, volume ratio
+                    image_location = np.zeros((boxes.shape[0], 7), dtype=np.float32)
+                    image_location[:, :6] = boxes
+                    image_location[:, 6] = (
+                        (image_location[:, 3] - image_location[:, 0])
+                        * (image_location[:, 4] - image_location[:, 1])
+                        * (image_location[:, 5] - image_location[:, 2])
+                        / (float(image_w) * float(image_h) * float(image_d))
+                    )
 
-                image_location_ori = copy.deepcopy(image_location)
-                image_location[:, 0] = image_location[:, 0] / float(image_w)
-                image_location[:, 1] = image_location[:, 1] / float(image_h)
-                image_location[:, 2] = image_location[:, 2] / float(image_w)
-                image_location[:, 3] = image_location[:, 3] / float(image_h)
+                    image_location_ori = copy.deepcopy(image_location)
 
-                g_location = np.array([0, 0, 1, 1, 1])
-                image_location = np.concatenate(
-                    [np.expand_dims(g_location, axis=0), image_location], axis=0
-                )
+                    image_location[:, 0] = image_location[:, 0] / float(image_w)
+                    image_location[:, 1] = image_location[:, 1] / float(image_h)
+                    image_location[:, 2] = image_location[:, 2] / float(image_d)
+                    image_location[:, 3] = image_location[:, 3] / float(image_w)
+                    image_location[:, 4] = image_location[:, 4] / float(image_h)
+                    image_location[:, 5] = image_location[:, 5] / float(image_d)
 
-                g_location_ori = np.array([0, 0, image_w, image_h, image_w * image_h])
-                image_location_ori = np.concatenate(
-                    [np.expand_dims(g_location_ori, axis=0), image_location_ori], axis=0
-                )
+                    g_location = np.array([0, 0, 0, 1, 1, 1, 1])
+                    image_location = np.concatenate(
+                        [np.expand_dims(g_location, axis=0), image_location], axis=0
+                    )
+                    self.boxes[index] = image_location
 
-        return features, num_boxes, image_location, imagj e_location_ori
+                    g_location_ori = np.array(
+                        [0, 0, 0, image_w, image_h, image_d, image_w * image_h * image_d]
+                    )
+                    image_location_ori = np.concatenate(
+                        [np.expand_dims(g_location_ori, axis=0), image_location_ori],
+                        axis=0,
+                    )
+                    self.boxes_ori[index] = image_location_ori
+                    self.num_boxes[index] = num_boxes
+    
+        return features, num_boxes, image_location, image_location_ori
 
     def keys(self) -> List[int]:
         return self._image_ids

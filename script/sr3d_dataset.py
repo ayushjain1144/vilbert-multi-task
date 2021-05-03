@@ -1,4 +1,4 @@
-        """Dataset and data loader for SR3D."""
+"""Dataset and data loader for SR3D."""
 
 from copy import deepcopy
 import csv

@@ -1,19 +1,19 @@
+from multiprocessing.pool import ThreadPool as Pool
+from copy import deepcopy
+from pointnet_pp import PointNetPP
+
 import argparse
-import glob
 import os
 
 import numpy as np
 import torch
-from PIL import Image
 from six.moves import cPickle
 import os.path as osp
 from visual_data_handlers import Scan, ScanNetMappings
 import torch.multiprocessing
-import ipdb 
+import ipdb
 st = ipdb.set_trace
-from multiprocessing.pool import ThreadPool as Pool
-from copy import deepcopy
-from pointnet_pp import PointNetPP
+
 
 class FeatureExtractor:
 
@@ -28,23 +28,26 @@ class FeatureExtractor:
 
         # load scans and pickle them once and for all!
         if not osp.exists(f"{pkl_path}/{split}_scans.pkl"):
-            save_data(f"{pkl_path}/{split}_scans.pkl", split, scan_path, base_txt_dir)
+            save_data(f"{pkl_path}/{split}_scans.pkl",
+                      split, scan_path, base_txt_dir)
         _, self.scans = unpickle_data(f"{pkl_path}/{split}_scans.pkl")
 
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(
+            'cuda:0' if torch.cuda.is_available() else 'cpu')
         # st()
         with torch.no_grad():
             checkpoint = torch.load(self.args.pointnet_model_file,
-                                        map_location=torch.device("cpu"))
+                                    map_location=torch.device("cpu"))
             # st()
             self.pp_model = PointNetPP()
-            self.pp_model.load_state_dict(checkpoint['model_state_dict']) 
-            self.pp_model = self.pp_model.eval()   
-    
+            self.pp_model.load_state_dict(checkpoint['model_state_dict'])
+            self.pp_model = self.pp_model.eval()
+
     def get_parser(self):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--pointnet_model_file", default="/projects/katefgroup/language_grounding/checkpoints/classifier.pt",
+            "--pointnet_model_file",
+            default="/projects/katefgroup/language_grounding/pretrained_models/pp_best.pt",
             type=str
         )
         parser.add_argument(
@@ -54,16 +57,16 @@ class FeatureExtractor:
             "--split", type=str, default="test"
         )
         parser.add_argument(
-            "--scan_path", default="/projects/katefgroup/language_grounding/scans",
+            "--scan_path",
+            default="/projects/katefgroup/language_grounding/scans",
             type=str
         )
         parser.add_argument(
-            "--scan_txt_base", default="/projects/katefgroup/language_grounding/extra",
+            "--scan_txt_base",
+            default="/projects/katefgroup/language_grounding/extra",
             type=str
         )
-        # parser.add_argument(
-        #     "--annos_path", default="", type=str, required=True
-        # )
+
         parser.add_argument(
             "--scan_pickle_path", type=str, default="scan_pickle"
         )
@@ -72,24 +75,27 @@ class FeatureExtractor:
         return parser
 
     def get_pointnet_features(self, scan_paths):
-        pc, pc_infos = [], []
+        # pc, pc_infos = [], []
 
         feat_list = []
         info_list = []
 
         for scan_path in scan_paths:
             scan = deepcopy(self.scans[scan_path])
-            labels = [obj['instance_label'] for obj in scan.three_d_objects]
+            # labels = [obj['instance_label'] for obj in scan.three_d_objects]
 
             obj_point_clouds = []
 
             for obj_id in range(len(scan.three_d_objects)):
-                point_cloud = np.copy(torch.from_numpy(scan.get_object_pc(obj_id)))
-                color = np.copy(torch.from_numpy(scan.get_object_color(obj_id)))
+                point_cloud = np.copy(
+                    torch.from_numpy(scan.get_object_pc(obj_id)))
+                color = np.copy(
+                    torch.from_numpy(scan.get_object_color(obj_id)))
 
                 np.random.seed(1184)
                 n_points = len(point_cloud)
-                inds = np.random.choice(n_points, 1024, replace=n_points < 1024)
+                inds = np.random.choice(n_points, 1024,
+                                        replace=n_points < 1024)
                 point_cloud = point_cloud[inds]
                 color = color[inds]
 
@@ -97,7 +103,6 @@ class FeatureExtractor:
                 point_cloud = point_cloud - np.mean(point_cloud, axis=0)
                 max_dist = np.max(np.sqrt(np.sum(point_cloud ** 2, axis=1)))
                 point_cloud = point_cloud / max_dist
-                
                 point_cloud = np.concatenate((point_cloud, color), 1)
                 point_cloud = torch.from_numpy(point_cloud).float()
 
@@ -121,8 +126,8 @@ class FeatureExtractor:
             image_h = float(max_y - min_y)
             image_d = float(max_z - min_z)
 
-            obj_point_clouds_batched = torch.stack(obj_point_clouds) # num_objs X 1024 X 6
-            pc_combined = obj_point_clouds_batched.permute(0, 2, 1)
+            obj_pc_batch = torch.stack(obj_point_clouds)  # num_objs X 1024 X 6
+            pc_combined = obj_pc_batch.permute(0, 2, 1)
             obj_features, _, _ = self.pp_model(pc_combined)
             obj_features = obj_features.mean(2).detach()  # num_objs X 1024
             assert not obj_features.requires_grad
@@ -141,7 +146,7 @@ class FeatureExtractor:
                 }
             )
 
-        return feat_list, info_list            
+        return feat_list, info_list
 
     def _save_feature(self, file_name, feature, info):
         file_base_name = os.path.basename(file_name)
@@ -151,13 +156,12 @@ class FeatureExtractor:
         file_base_name = file_base_name + ".npy"
 
         np.save(os.path.join(self.args.output_folder, file_base_name), info)
-    
+
     def _chunks(self, array, chunk_size):
         for i in range(0, len(array), chunk_size):
-            yield array[i : i + chunk_size]
+            yield array[i:i + chunk_size]
 
     def extract_features(self):
-        scan_path = self.args.scan_path
         split = self.args.split
         base_txt_dir = self.args.scan_txt_base
 
@@ -169,6 +173,7 @@ class FeatureExtractor:
             for idx, file_name in enumerate(chunk):
                 self._save_feature(file_name, features[idx], infos[idx])
 
+
 def scannet_loader(iter_obj):
     """Load the scans in memory, helper function."""
     scan_id, scan_path, scannet = iter_obj
@@ -177,7 +182,6 @@ def scannet_loader(iter_obj):
 
 def save_data(filename, split, scan_path, base_txt_dir):
     """Save all scans to pickle."""
-    import multiprocessing as mp
 
     # Read all scan files
     with open(f'{base_txt_dir}/sr3d_{split}_scans.txt') as fid:
@@ -207,6 +211,7 @@ def save_data(filename, split, scan_path, base_txt_dir):
     print('pickle time')
     pickle_data(filename, scannet, all_scans)
 
+
 def pickle_data(file_name, *args):
     """Use (c)Pickle to save multiple objects in a single file."""
     out_file = open(file_name, 'wb')
@@ -214,6 +219,7 @@ def pickle_data(file_name, *args):
     for item in args:
         cPickle.dump(item, out_file, protocol=2)
     out_file.close()
+
 
 def unpickle_data(file_name):
     """Restore data previously saved with pickle_data()."""

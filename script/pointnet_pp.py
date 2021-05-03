@@ -256,7 +256,7 @@ class LinearClassifier(nn.Module):
 class PointNetPP(nn.Module):
     """PyTorch PointNet++ implementation."""
 
-    def __init__(self, num_class, in_dim=9, out_dim=512):
+    def __init__(self, num_class=589, in_dim=9, out_dim=512):
         """Initialize layers."""
         super().__init__()
 
@@ -296,4 +296,3 @@ if __name__ == '__main__':
     x, l3_points = model(xyz)
     print(x.shape, l3_points.shape)
     # prints torch.Size([6, 13]) torch.Size([6, 512])
-    

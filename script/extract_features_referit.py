@@ -34,14 +34,16 @@ class FeatureExtractor:
 
         self.device = torch.device(
             'cuda:0' if torch.cuda.is_available() else 'cpu')
-        # st()
-        with torch.no_grad():
-            checkpoint = torch.load(self.args.pointnet_model_file,
-                                    map_location=torch.device("cpu"))
-            # st()
-            self.pp_model = PointNetPP()
-            self.pp_model.load_state_dict(checkpoint['model_state_dict'])
-            self.pp_model = self.pp_model.eval()
+
+        self.mean_rgb = np.asarray([[0.46153122, 0.41705923, 0.36484701]])
+        self.size_max = np.asarray([0.00916539, 0.00956155, 0.00850233])
+        self.size_min = np.asarray([11.12648844, 17.15573245, 3.99937487])
+        self.size_mean = np.asarray([0.77537238, 0.95590994, 0.863069])
+
+        checkpoint = torch.load(self.args.pointnet_model_file)
+        self.pp_model = PointNetPP(in_dim=13)
+        self.pp_model.load_state_dict(checkpoint['model_state_dict'])
+        self.pp_model = self.pp_model.eval()
 
     def get_parser(self):
         parser = argparse.ArgumentParser()
@@ -51,7 +53,8 @@ class FeatureExtractor:
             type=str
         )
         parser.add_argument(
-            "--output_folder", type=str, default="./output"
+            "--output_folder", type=str,
+            default="/projects/katefgroup/language_grounding/vilbert_data/output"
         )
         parser.add_argument(
             "--split", type=str, default="test"
@@ -91,7 +94,11 @@ class FeatureExtractor:
                     torch.from_numpy(scan.get_object_pc(obj_id)))
                 color = np.copy(
                     torch.from_numpy(scan.get_object_color(obj_id)))
-
+                # Sizes and centroids
+                box = scan.get_object_bbox(obj_id)
+                size = box[3:] - box[:3]
+                floor_height = np.percentile(point_cloud[:, 2], 0.99)
+                height = point_cloud[:, 2] - floor_height
                 np.random.seed(1184)
                 n_points = len(point_cloud)
                 inds = np.random.choice(n_points, 1024,
@@ -103,9 +110,27 @@ class FeatureExtractor:
                 point_cloud = point_cloud - np.mean(point_cloud, axis=0)
                 max_dist = np.max(np.sqrt(np.sum(point_cloud ** 2, axis=1)))
                 point_cloud = point_cloud / max_dist
-                point_cloud = np.concatenate((point_cloud, color), 1)
-                point_cloud = torch.from_numpy(point_cloud).float()
 
+                # Merge with color
+                color = color - self.mean_rgb
+                size = (size - self.size_mean)/(self.size_max - self.size_min)
+                size = np.tile(size, (len(color), 1))
+
+                # Add normals
+                normals = np.load(osp.join(
+                    "/projects/katefgroup/language_grounding/extra/scannet_normals",
+                    scan_path + '.npy'))
+                points_to_use = np.copy(scan.three_d_objects[obj_id]['points'])
+                normals = normals[points_to_use]
+                normals = normals[inds]
+
+                # Add height
+                height = height[inds]
+
+                point_cloud = np.concatenate(
+                    (point_cloud, color, size,
+                     normals, np.expand_dims(height, 1)), 1)
+                point_cloud = torch.from_numpy(point_cloud).float()
                 obj_point_clouds.append(point_cloud)
 
             obj_bbox = [
@@ -128,8 +153,8 @@ class FeatureExtractor:
 
             obj_pc_batch = torch.stack(obj_point_clouds)  # num_objs X 1024 X 6
             pc_combined = obj_pc_batch.permute(0, 2, 1)
-            obj_features, _, _ = self.pp_model(pc_combined)
-            obj_features = obj_features.mean(2).detach()  # num_objs X 1024
+            with torch.no_grad():
+                _, obj_features = self.pp_model(pc_combined)
             assert not obj_features.requires_grad
 
             # "features" [shape: (num_images, num_proposals, feature_size)]

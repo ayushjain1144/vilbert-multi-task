@@ -20,10 +20,16 @@ MAP_SIZE = 1099511627776
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--features_dir", default=None, type=str, help="Path to extracted features file"
+        "--features_dir",
+        default='/projects/katefgroup/language_grounding/vilbert_data/output',
+        type=str,
+        help="Path to extracted features file"
     )
     parser.add_argument(
-        "--lmdb_file", default=None, type=str, help="Path to generated LMDB file"
+        "--lmdb_file",
+        default='/projects/katefgroup/language_grounding/vilbert_data/referit.lmdb',
+        type=str,
+        help="Path to generated LMDB file"
     )
     return parser
 

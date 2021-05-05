@@ -413,11 +413,11 @@ def LoadDatasets(args, task_cfg, ids, split="trainval"):
     for features_h5path in task_feature_reader1.keys():
         if features_h5path != "":
             if "referit" in features_h5path:
-                task_feature_reader1[features_h5path] = ImageFeaturesH5Reader(
+                task_feature_reader1[features_h5path] = PCFeaturesH5Reader(
                     features_h5path, args.in_memory
                 )
             else:
-                task_feature_reader1[features_h5path] = PCFeaturesH5Reader(
+                task_feature_reader1[features_h5path] = ImageFeaturesH5Reader(
                     features_h5path, args.in_memory
                 )
     for features_h5path in task_feature_reader2.keys():

@@ -338,7 +338,7 @@ TASK19:
   process: normal
   task_id: 19
   dataroot: /projects/katefgroup/language_grounding
-  features_h5path1: /projects/katefgroup/language_grounding/sr3d.lmdb
+  features_h5path1: /projects/katefgroup/language_grounding/vilbert_data/referit.lmdb
   features_h5path2: ''
   train_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_train_scans.txt'
   val_annotations_jsonpath: '/projects/katefgroup/language_grounding/extra/sr3d_test_scans.txt'

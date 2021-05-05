@@ -17,7 +17,6 @@ from bisect import bisect
 import yaml
 from easydict import EasyDict as edict
 
-import pdb
 import sys
 import torch
 import torch.nn.functional as F
@@ -45,6 +44,9 @@ from torch.optim.lr_scheduler import (
 
 import vilbert.utils as utils
 import torch.distributed as dist
+
+import ipdb
+st = ipdb.set_trace
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",

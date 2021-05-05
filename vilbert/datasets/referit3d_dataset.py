@@ -62,7 +62,7 @@ class Referit3DDataset(Dataset):
 
         #### Hardcoded Paths for now ####
         self.annos_path = os.path.join(self.dataroot, 'refer_it_3d', 'sr3d.csv')
-        self.scan_path = os.path.join(self.dataroot, 'scan_pickle', f'{split}_scans.pkl')
+        self.scan_path = os.path.join(self.dataroot, f'{split}_scans.pkl')
         #################################
 
         cache_path = os.path.join(

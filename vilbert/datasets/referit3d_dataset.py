@@ -12,7 +12,7 @@ import numpy as np
 from pytorch_transformers.tokenization_bert import BertTokenizer
 from ._pc_features_reader import PCFeaturesH5Reader
 import _pickle as cPickle
-from script.extract_features_referit import FeatureExtractor, unpickle_data
+from script.extract_features_referit import unpickle_data
 from tools.box_utils import box3d_iou
 
 def assert_eq(real, expected):
@@ -106,7 +106,7 @@ class Referit3DDataset(Dataset):
             annos = [
                 {
                     'image_id': line[headers['scan_id']],
-                    'ref_box': ref_box
+                    'ref_box': ref_box,
                     'ref_id': int(line[headers['target_id']]),
                     'distractor_ids': eval(line[headers['distractor_ids']]),
                     'caption': line[headers['utterance']],

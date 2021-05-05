@@ -237,7 +237,7 @@ def main():
     else:
         from vilbert.vilbert import BertConfig
         from vilbert.vilbert import VILBertForVLTasks
-
+    st()
     task_names = []
     task_lr = []
     for i, task_id in enumerate(args.tasks.split("-")):

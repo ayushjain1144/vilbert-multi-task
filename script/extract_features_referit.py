@@ -1,6 +1,6 @@
 from multiprocessing.pool import ThreadPool as Pool
 from copy import deepcopy
-from pointnet_pp import PointNetPP
+from script.pointnet_pp import PointNetPP
 
 import argparse
 import os
@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from six.moves import cPickle
 import os.path as osp
-from visual_data_handlers import Scan, ScanNetMappings
+from script.visual_data_handlers import Scan, ScanNetMappings
 import torch.multiprocessing
 import ipdb
 st = ipdb.set_trace

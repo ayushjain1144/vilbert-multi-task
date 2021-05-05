@@ -10,7 +10,6 @@ from torch.utils.data import Dataset
 import numpy as np
 
 from pytorch_transformers.tokenization_bert import BertTokenizer
-# from ._image_features_reader import ImageFeaturesH5Reader
 from ._pc_features_reader import PCFeaturesH5Reader
 import _pickle as cPickle
 from script.extract_features_referit import FeatureExtractor, unpickle_data
@@ -43,8 +42,8 @@ class Referit3DDataset(Dataset):
         dataroot: str,
         annotations_jsonpath: str,
         split: str,
-        image_features_reader: ImageFeaturesH5Reader,
-        gt_image_features_reader: ImageFeaturesH5Reader,
+        image_features_reader: PCFeaturesH5Reader,
+        gt_image_features_reader: PCFeaturesH5Reader,
         tokenizer: BertTokenizer,
         bert_model,
         clean_datasets,
